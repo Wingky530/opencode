@@ -56,7 +56,9 @@ import { type DiffStyle, SessionReviewTab, type SessionReviewTabProps } from "@/
 import { useSessionLayout } from "@/pages/session/session-layout"
 import { syncSessionModel } from "@/pages/session/session-model-helpers"
 import { SessionSidePanel } from "@/pages/session/session-side-panel"
+import { TaskTray } from "@/pages/session/task-tray"
 import { TerminalPanel } from "@/pages/session/terminal-panel"
+import { useBackgroundTask } from "@/context/background-task"
 import { useSessionCommands } from "@/pages/session/use-session-commands"
 import { useSessionHashScroll } from "@/pages/session/use-session-hash-scroll"
 import { shouldUseV2NewSessionPage } from "@/pages/session/new-session-layout"
@@ -194,6 +196,7 @@ export default function Page() {
   const prompt = usePrompt()
   const comments = useComments()
   const terminal = useTerminal()
+  const backgroundTask = useBackgroundTask()
   const [searchParams, setSearchParams] = useSearchParams<{ prompt?: string }>()
   const location = useLocation()
   const { params, sessionKey, tabs, view } = useSessionLayout()
@@ -829,10 +832,46 @@ export default function Page() {
       return
     }
 
+    // Ctrl+J to toggle background task tray
+    if ((event.ctrlKey || event.metaKey) && event.key === "j") {
+      event.preventDefault()
+      layout.backgroundTask.toggle()
+      if (layout.backgroundTask.opened()) {
+        backgroundTask.setFocused(true)
+      }
+      return
+    }
+
     // Prefer the open terminal over the composer when it can take focus
     if (view().terminal.opened()) {
       const id = terminal.active()
       if (id && shouldFocusTerminalOnKeyDown(event) && focusTerminalById(id)) return
+    }
+
+    // When background task tray is focused, handle keyboard navigation
+    if (backgroundTask.isFocused()) {
+      if (event.key === "Escape") {
+        event.preventDefault()
+        layout.backgroundTask.close()
+        backgroundTask.setFocused(false)
+        return
+      }
+      if (event.key === "ArrowUp") {
+        event.preventDefault()
+        backgroundTask.navigateTask("up")
+        return
+      }
+      if (event.key === "ArrowDown") {
+        event.preventDefault()
+        backgroundTask.navigateTask("down")
+        return
+      }
+      if (event.key === "Enter") {
+        event.preventDefault()
+        return
+      }
+      event.preventDefault()
+      return
     }
 
     // Only treat explicit scroll keys as potential "user scroll" gestures.
@@ -1838,6 +1877,7 @@ export default function Page() {
         />
       </div>
 
+      <TaskTray />
       <TerminalPanel />
     </div>
   )

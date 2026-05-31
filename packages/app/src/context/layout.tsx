@@ -241,6 +241,10 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           height: DEFAULT_TERMINAL_HEIGHT,
           opened: false,
         },
+        backgroundTask: {
+          height: DEFAULT_TERMINAL_HEIGHT, // Default to terminal height
+          opened: false,
+        },
         review: {
           diffStyle: "split" as ReviewDiffStyle,
           panelOpened: true,
@@ -607,6 +611,38 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
         resize(height: number) {
           setStore("terminal", "height", height)
         },
+      },
+      backgroundTask: {
+        opened: createMemo(() => store.backgroundTask?.opened ?? false),
+        height: createMemo(() => store.backgroundTask?.height ?? DEFAULT_TERMINAL_HEIGHT),
+        resize(height: number) {
+          if (!store.backgroundTask) {
+            setStore("backgroundTask", { height, opened: true })
+            return
+          }
+          setStore("backgroundTask", "height", height)
+        },
+        open() {
+          if (!store.backgroundTask) {
+            setStore("backgroundTask", { height: DEFAULT_TERMINAL_HEIGHT, opened: true })
+            return
+          }
+          setStore("backgroundTask", "opened", true)
+        },
+        close() {
+          if (!store.backgroundTask) {
+            setStore("backgroundTask", { height: DEFAULT_TERMINAL_HEIGHT, opened: false })
+            return
+          }
+          setStore("backgroundTask", "opened", false)
+        },
+        toggle() {
+          if (!store.backgroundTask) {
+            setStore("backgroundTask", { height: DEFAULT_TERMINAL_HEIGHT, opened: true })
+            return
+          }
+          setStore("backgroundTask", "opened", (x) => !x)
+        }
       },
       review: {
         diffStyle: createMemo(() => store.review?.diffStyle ?? "split"),

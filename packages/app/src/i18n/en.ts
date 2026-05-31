@@ -52,6 +52,7 @@ export const dict = {
   "command.context.addSelection.description": "Add selected lines from the current file",
   "command.input.focus": "Focus input",
   "command.terminal.toggle": "Toggle terminal",
+  "command.backgroundTask.toggle": "Toggle background tasks",
   "command.fileTree.toggle": "Toggle file tree",
   "command.review.toggle": "Toggle review",
   "command.terminal.new": "New terminal",
@@ -652,6 +653,10 @@ export const dict = {
   "terminal.connectionLost.abnormalClose": "WebSocket closed abnormally: {{code}}",
   "terminal.connectionLost.description":
     "The terminal connection was interrupted. This can happen when the server restarts.",
+
+  "backgroundTask.title": "Background Tasks",
+  "backgroundTask.clearCompleted": "Clear completed",
+  "backgroundTask.noTasks": "No background tasks",
 
   "common.closeTab": "Close tab",
   "common.dismiss": "Dismiss",

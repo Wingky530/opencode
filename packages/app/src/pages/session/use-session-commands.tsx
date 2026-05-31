@@ -456,6 +456,13 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
       onSelect: () => view().terminal.toggle(),
     }),
     viewCommand({
+      id: "backgroundTask.toggle",
+      title: language.t("command.backgroundTask.toggle"),
+      keybind: "ctrl+j",
+      slash: "tasks",
+      onSelect: () => layout.backgroundTask.toggle(),
+    }),
+    viewCommand({
       id: "review.toggle",
       title: language.t("command.review.toggle"),
       keybind: "mod+shift+r",

@@ -64,6 +64,7 @@ import { DialogForkFromTimeline } from "./dialog-fork-from-timeline"
 import { DialogSessionRename } from "../../component/dialog-session-rename"
 import { Sidebar } from "./sidebar"
 import { SubagentFooter } from "./subagent-footer.tsx"
+import { BackgroundTaskTray, type BackgroundTask } from "../../component/background-task-tray"
 import { LANGUAGE_EXTENSIONS } from "@/lsp/language"
 import parsers from "../../../../../../parsers-config.ts"
 import * as Clipboard from "../../util/clipboard"
@@ -128,6 +129,7 @@ const sessionBindingCommands = [
   "session.undo",
   "session.redo",
   "session.sidebar.toggle",
+  "session.tasks.toggle",
   "session.toggle.conceal",
   "session.toggle.timestamps",
   "session.toggle.thinking",
@@ -146,6 +148,10 @@ const sessionBindingCommands = [
   "session.parent",
   "session.child.next",
   "session.child.previous",
+  "session.tasks.next",
+  "session.tasks.prev",
+  "session.tasks.cancel",
+  "session.tasks.close",
 ] as const
 
 const sessionGlobalBindingCommands = [
@@ -231,6 +237,54 @@ export function Session() {
   const [diffWrapMode] = kv.signal<"word" | "none">("diff_wrap_mode", "word")
   const [_animationsEnabled, _setAnimationsEnabled] = kv.signal("animations_enabled", true)
   const [showGenericToolOutput, setShowGenericToolOutput] = kv.signal("generic_tool_output_visibility", false)
+  const [tasksOpen, setTasksOpen] = createSignal(false)
+  const [selectedTask, setSelectedTask] = createSignal(0)
+
+  const tasks = createMemo(() => {
+    const msgs = messages()
+    const result: BackgroundTask[] = []
+    for (const msg of msgs) {
+      if (msg.role !== "assistant") continue
+      const parts = sync.data.part[msg.id]
+      if (!parts) continue
+      for (const part of parts) {
+        if (part.type !== "tool") continue
+        const input = part.state.input as Record<string, unknown> | undefined
+        if (part.tool === ShellID.ToolID) {
+          if (part.state.status !== "running") continue
+          result.push({
+            id: part.id,
+            label: ((input?.command as string) ?? (input?.description as string) ?? "bash") as string,
+            status: "running",
+            output: ((part.state.output as string) ?? "").split("\n").filter(Boolean),
+            startedAt: part.time.created,
+          })
+        } else if (part.tool === "task") {
+          const desc = (input?.description as string) ?? "Task"
+          const agent = (input?.subagent_type as string) ?? "General"
+          result.push({
+            id: part.id,
+            label: `[${agent}] ${desc}`,
+            status: part.state.status === "completed" ? "success"
+                  : part.state.status === "error" ? "error"
+                  : "running",
+            output: [],
+            startedAt: part.time.created,
+          })
+        }
+      }
+    }
+    return result
+  })
+
+  createEffect(on(
+    () => tasks().filter((t) => t.status === "running").length,
+    (running, prev) => {
+      if (running > 0 && (prev === 0 || prev === undefined)) {
+        setTasksOpen(true)
+      }
+    },
+  ))
 
   const wide = createMemo(() => dimensions().width > 120)
   const sidebarVisible = createMemo(() => {
@@ -422,6 +476,22 @@ export function Session() {
     })
     const status = sync.data.session_status[sessionID]
     if (status?.type === "retry") void DialogAlert.show(dialog, "Retry Error", status.message)
+  }
+
+  function cancelTask(id: string) {
+    for (const msg of messages()) {
+      if (msg.role !== "assistant") continue
+      const parts = sync.data.part[msg.id]
+      if (!parts) continue
+      const part = parts.find((p) => p.id === id)
+      if (part?.type === "tool" && part.tool === "task") {
+        const sessionId = (part.state.metadata as any)?.sessionId
+        if (sessionId) {
+          sdk.client.session.abort({ sessionID: sessionId }).catch(() => {})
+        }
+      }
+      break
+    }
   }
 
   function moveFirstChild() {
@@ -665,6 +735,16 @@ export function Session() {
           setSidebar(() => (isVisible ? "hide" : "auto"))
           setSidebarOpen(!isVisible)
         })
+        dialog.clear()
+      },
+    },
+    {
+      title: tasksOpen() ? "Close task tray" : "Open task tray",
+      value: "session.tasks.toggle",
+      category: "Session",
+      run: () => {
+        setTasksOpen((prev) => !prev)
+        setSelectedTask(0)
         dialog.clear()
       },
     },
@@ -1055,6 +1135,52 @@ export function Session() {
         moveChild(-1)
       }),
     },
+    {
+      title: "Select next task",
+      value: "session.tasks.next",
+      category: "Session",
+      hidden: true,
+      enabled: () => tasksOpen() && tasks().length > 0,
+      run: () => {
+        setSelectedTask((i) => Math.min(i + 1, tasks().length - 1))
+        dialog.clear()
+      },
+    },
+    {
+      title: "Select previous task",
+      value: "session.tasks.prev",
+      category: "Session",
+      hidden: true,
+      enabled: () => tasksOpen() && tasks().length > 0,
+      run: () => {
+        setSelectedTask((i) => Math.max(i - 1, 0))
+        dialog.clear()
+      },
+    },
+    {
+      title: "Cancel selected task",
+      value: "session.tasks.cancel",
+      category: "Session",
+      hidden: true,
+      enabled: () => tasksOpen() && tasks().length > 0,
+      run: () => {
+        const id = tasks()[selectedTask()]?.id
+        if (!id) return
+        cancelTask(id)
+        dialog.clear()
+      },
+    },
+    {
+      title: "Close task tray",
+      value: "session.tasks.close",
+      category: "Session",
+      hidden: true,
+      enabled: () => tasksOpen(),
+      run: () => {
+        setTasksOpen(false)
+        dialog.clear()
+      },
+    },
   ])
 
   const sessionCommands = createMemo(() =>
@@ -1249,6 +1375,14 @@ export function Session() {
                   )}
                 </For>
               </scrollbox>
+              <BackgroundTaskTray
+                open={tasksOpen()}
+                tasks={tasks()}
+                selected={selectedTask()}
+                onSelect={(i) => setSelectedTask(i)}
+                onCancel={(id) => cancelTask(id)}
+                onClose={() => setTasksOpen(false)}
+              />
               <box flexShrink={0}>
                 <Show when={permissions().length > 0}>
                   <PermissionPrompt request={permissions()[0]} />

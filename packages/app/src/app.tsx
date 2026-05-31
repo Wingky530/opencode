@@ -43,6 +43,7 @@ import { PromptProvider } from "@/context/prompt"
 import { ServerConnection, ServerProvider, serverName, useServer } from "@/context/server"
 import { SettingsProvider, useSettings } from "@/context/settings"
 import { TerminalProvider } from "@/context/terminal"
+import { BackgroundTaskProvider } from "@/context/background-task"
 import DirectoryLayout from "@/pages/directory-layout"
 import Layout from "@/pages/layout"
 import { ErrorPage } from "./pages/error"
@@ -135,7 +136,9 @@ function SessionProviders(props: ParentProps) {
     <TerminalProvider>
       <FileProvider>
         <PromptProvider>
-          <CommentsProvider>{props.children}</CommentsProvider>
+          <BackgroundTaskProvider>
+            <CommentsProvider>{props.children}</CommentsProvider>
+          </BackgroundTaskProvider>
         </PromptProvider>
       </FileProvider>
     </TerminalProvider>
