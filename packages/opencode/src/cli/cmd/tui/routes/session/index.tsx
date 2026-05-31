@@ -240,42 +240,42 @@ export function Session() {
   const [tasksOpen, setTasksOpen] = createSignal(false)
   const [selectedTask, setSelectedTask] = createSignal(0)
 
-  const tasks = createMemo(() => {
-    const msgs = messages()
-    const result: BackgroundTask[] = []
-    for (const msg of msgs) {
-      if (msg.role !== "assistant") continue
-      const parts = sync.data.part[msg.id]
-      if (!parts) continue
-      for (const part of parts) {
-        if (part.type !== "tool") continue
-        const input = part.state.input as Record<string, unknown> | undefined
-          if (part.tool === ShellID.ToolID) {
-            if (part.state?.status !== "running") continue
-            result.push({
-              id: part.id,
-              label: ((input?.command as string) ?? (input?.description as string) ?? "bash") as string,
-              status: "running",
-              output: ((part.state?.output as string) ?? "").split("\n").filter(Boolean),
-              startedAt: part.time?.created ?? Date.now(),
-            })
-          } else if (part.tool === "task") {
-            const desc = (input?.description as string) ?? "Task"
-            const agent = (input?.subagent_type as string) ?? "General"
-            result.push({
-              id: part.id,
-              label: `[${agent}] ${desc}`,
-              status: part.state?.status === "completed" ? "success"
-                  : part.state?.status === "error" ? "error"
-                  : "running",
-              output: [],
-              startedAt: part.time?.created ?? Date.now(),
-            })
-          }
-      }
-    }
-    return result
-  })
+   const tasks = createMemo(() => {
+     const msgs = messages()
+     const result: BackgroundTask[] = []
+     for (const msg of msgs) {
+       if (msg.role !== "assistant") continue
+       const parts = sync.data.part[msg.id]
+       if (!parts) continue
+       for (const part of parts) {
+         if (part.type !== "tool") continue
+         const input = part.state?.input as Record<string, unknown> | undefined
+           if (part.tool === ShellID.ToolID) {
+             if (part.state?.status !== "running") continue
+             result.push({
+               id: part.id,
+               label: ((input?.command as string) ?? (input?.description as string) ?? "bash") as string,
+               status: "running",
+               output: ((part.state?.output as string) ?? "").split("\n").filter(Boolean),
+               startedAt: part.time?.created ?? Date.now(),
+             })
+           } else if (part.tool === "task") {
+             const desc = (input?.description as string) ?? "Task"
+             const agent = (input?.subagent_type as string) ?? "General"
+             result.push({
+               id: part.id,
+               label: `[${agent}] ${desc}`,
+               status: part.state?.status === "completed" ? "success"
+                   : part.state?.status === "error" ? "error"
+                   : "running",
+               output: [],
+               startedAt: part.time?.created ?? Date.now(),
+             })
+           }
+       }
+     }
+     return result
+   })
 
   createEffect(on(
     () => tasks().filter((t) => t.status === "running").length,
