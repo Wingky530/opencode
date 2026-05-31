@@ -250,28 +250,28 @@ export function Session() {
       for (const part of parts) {
         if (part.type !== "tool") continue
         const input = part.state.input as Record<string, unknown> | undefined
-        if (part.tool === ShellID.ToolID) {
-          if (part.state.status !== "running") continue
-          result.push({
-            id: part.id,
-            label: ((input?.command as string) ?? (input?.description as string) ?? "bash") as string,
-            status: "running",
-            output: ((part.state.output as string) ?? "").split("\n").filter(Boolean),
-            startedAt: part.time.created,
-          })
-        } else if (part.tool === "task") {
-          const desc = (input?.description as string) ?? "Task"
-          const agent = (input?.subagent_type as string) ?? "General"
-          result.push({
-            id: part.id,
-            label: `[${agent}] ${desc}`,
-            status: part.state.status === "completed" ? "success"
-                  : part.state.status === "error" ? "error"
+          if (part.tool === ShellID.ToolID) {
+            if (part.state?.status !== "running") continue
+            result.push({
+              id: part.id,
+              label: ((input?.command as string) ?? (input?.description as string) ?? "bash") as string,
+              status: "running",
+              output: ((part.state?.output as string) ?? "").split("\n").filter(Boolean),
+              startedAt: part.time?.created ?? Date.now(),
+            })
+          } else if (part.tool === "task") {
+            const desc = (input?.description as string) ?? "Task"
+            const agent = (input?.subagent_type as string) ?? "General"
+            result.push({
+              id: part.id,
+              label: `[${agent}] ${desc}`,
+              status: part.state?.status === "completed" ? "success"
+                  : part.state?.status === "error" ? "error"
                   : "running",
-            output: [],
-            startedAt: part.time.created,
-          })
-        }
+              output: [],
+              startedAt: part.time?.created ?? Date.now(),
+            })
+          }
       }
     }
     return result
