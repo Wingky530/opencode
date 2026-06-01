@@ -31,7 +31,7 @@ export function BackgroundTaskTray(props: {
         fallback={
           <box height={1} backgroundColor={theme.backgroundPanel} paddingLeft={2} paddingRight={2}>
             <text fg={theme.textMuted}>
-              <text fg={theme.warning}>●</text> {runningCount()} running · <text fg={theme.textMuted}>Ctrl+Y</text>
+              <text fg={theme.warning}>●</text> {String(runningCount())} running · <text fg={theme.textMuted}>Ctrl+Y</text>
             </text>
           </box>
         }
@@ -45,7 +45,7 @@ export function BackgroundTaskTray(props: {
           gap={1}
         >
           <box flexShrink={0} paddingLeft={2} paddingRight={2}>
-            <text fg={theme.text}>Tasks ({props.tasks.length})</text>
+            <text fg={theme.text}>Tasks ({String(props.tasks.length)})</text>
             <text fg={theme.textMuted}> — Ctrl+Y to close</text>
           </box>
           <box flexDirection="row" flexGrow={1} minHeight={0}>
@@ -62,24 +62,26 @@ export function BackgroundTaskTray(props: {
             >
               <For each={props.tasks}>
                 {(task, index) => {
+                  const safeStatus = String(task.status)
+                  const safeLabel = String(task.label)
                   const statusColor =
-                    task.status === "running"
+                    safeStatus === "running"
                       ? theme.warning
-                      : task.status === "success"
+                      : safeStatus === "success"
                         ? theme.success
-                        : task.status === "error"
+                        : safeStatus === "error"
                           ? theme.error
                           : theme.textMuted
                   const statusIcon =
-                    task.status === "running" ? "●" : task.status === "success" ? "✓" : task.status === "error" ? "✗" : "○"
+                    safeStatus === "running" ? "●" : safeStatus === "success" ? "✓" : safeStatus === "error" ? "✗" : "○"
                   const isSelected = props.selected === index()
                   return (
                     <box
                       height={1}
                       backgroundColor={isSelected ? theme.backgroundElement : undefined}
                     >
-                      <text fg={statusColor}>{statusIcon} {task.label}</text>
-                      <Show when={isSelected && task.status === "running"}>
+                      <text fg={statusColor}>{statusIcon} {safeLabel}</text>
+                      <Show when={isSelected && safeStatus === "running"}>
                         <text fg={theme.textMuted}> [X]</text>
                       </Show>
                     </box>
@@ -104,7 +106,7 @@ export function BackgroundTaskTray(props: {
                   },
                 }}
               >
-                <text fg={theme.textMuted}>{selectedTask()!.output.join("\n") || "(no output)"}</text>
+                <text fg={theme.textMuted}>{String(selectedTask()!.output.join("\n") || "(no output)")}</text>
               </scrollbox>
             </Show>
           </box>
